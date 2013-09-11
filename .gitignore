@@ -1,2 +1,5 @@
 .vagrant
-txtorcon/
+
+# sphinx related
+source/
+build/
