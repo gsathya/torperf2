@@ -1,5 +1,5 @@
 .vagrant
-
+*.pyc
 # sphinx related
 source/
 build/
