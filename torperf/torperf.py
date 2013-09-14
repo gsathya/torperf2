@@ -45,7 +45,6 @@ def setup_failed(arg):
 def updates(prog, tag, summary):
     print "%d%%: %s" % (prog, summary)
 
-
 config = txtorcon.TorConfig()
 config.OrPort = 1234
 config.SocksPort = perfconf.tor_config['socks_port']
