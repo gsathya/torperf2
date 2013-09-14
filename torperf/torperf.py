@@ -1,9 +1,19 @@
 #!/usr/bin/env python
 
 import functools
-from twisted.internet import reactor
 import txtorcon
 import perfconf
+
+from pprint import pformat
+
+from twisted.internet import reactor
+from twisted.internet.defer import Deferred
+from twisted.internet.protocol import Protocol
+from twisted.internet.endpoints import TCP4ClientEndpoint
+from twisted.web.client import Agent
+from twisted.web.http_headers import Headers
+
+from txsocksx.http import SOCKS5Agent
 
 def finished(answer):
     print "Answer:", answer
@@ -29,13 +39,28 @@ def state_complete(config, state):
     # running Tor (via SETCONF calls)
     config.save().addCallback(query_changed_config, state)
 
+def cbRequest(response):
+    print 'Response received'
+    print 'Response headers:'
+    print response.version
+    print pformat(list(response.headers.getAllRawHeaders()))
 
-def setup_complete(config, proto):
+def cbShutdown(ignored):
+    reactor.stop()
+
+def do_request(state):
+    torServerEndpoint = TCP4ClientEndpoint(reactor, '127.0.0.1', 9050)
+    agent = SOCKS5Agent(reactor, proxyEndpoint=torServerEndpoint)
+    d = agent.request('GET', 'http://google.com/')
+    d.addCallback(cbRequest)
+    d.addBoth(cbShutdown)
+
+def setup_complete(proto):
     print "setup complete:", proto
     print "Building a TorState"
     state = txtorcon.TorState(proto.tor_protocol)
-    # Pass the config object yet again, avoiding global state
-    state.post_bootstrap.addCallback(functools.partial(state_complete, config))
+
+    state.post_bootstrap.addCallback(do_request)
     state.post_bootstrap.addErrback(setup_failed)
 
 
@@ -52,10 +77,8 @@ config = txtorcon.TorConfig()
 config.OrPort = 1234
 config.SocksPort = perfconf.tor_config['socks_port']
 
-
-# Launch tor. The config-object is passed by the closure around
-# setup_complete()
+# Launch tor.
 d = txtorcon.launch_tor(config, reactor, progress_updates=updates)
-d.addCallback(functools.partial(setup_complete, config))
+d.addCallback(setup_complete)
 d.addErrback(setup_failed)
 reactor.run()
