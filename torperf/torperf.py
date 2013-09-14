@@ -15,34 +15,9 @@ from twisted.web.http_headers import Headers
 
 from txsocksx.http import SOCKS5Agent
 
-def finished(answer):
-    print "Answer:", answer
-    print "We could now do any sort of exciting thing we wanted..."
-    print "...but instead, we'll just exit."
-    reactor.stop()
-
-
-def query_changed_config(answer, state):
-    # now we'll ask for the ORPort back to prove it changed
-    state.protocol.get_conf("ORPort").addCallback(finished)
-
-
-def state_complete(config, state):
-    print "We've completely booted up a TorState to a Tor version %s at PID %d" % (state.protocol.version, state.tor_pid)
-
-    print "This Tor has the following %d Circuits:" % len(state.circuits)
-    for c in state.circuits.values():
-        print c
-
-    config.ORPort = 9090
-    # "save" may be poorly-named API; it serializes the options to the
-    # running Tor (via SETCONF calls)
-    config.save().addCallback(query_changed_config, state)
-
 def cbRequest(response):
     print 'Response received'
     print 'Response headers:'
-    print response.version
     print pformat(list(response.headers.getAllRawHeaders()))
 
 def cbShutdown(ignored):
@@ -63,11 +38,9 @@ def setup_complete(proto):
     state.post_bootstrap.addCallback(do_request)
     state.post_bootstrap.addErrback(setup_failed)
 
-
 def setup_failed(arg):
-    print "SETUP FAILED", arg
+    print "Setup Failed", arg
     reactor.stop()
-
 
 def updates(prog, tag, summary):
     print "%d%%: %s" % (prog, summary)
