@@ -1,5 +1,6 @@
+# Copyright (c) 2013, Sathyanarayanan Gunasekaran, The Tor Project, Inc.
+# See LICENSE for licensing information
 #!/usr/bin/env python
-
 
 import txtorcon
 import perfconf
