@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import functools
+
 import txtorcon
 import perfconf
 
