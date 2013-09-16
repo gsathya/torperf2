@@ -49,9 +49,7 @@ elif [ -r /lib/lsb/init-functions ]; then
 fi
 
 TOR_DEB_REPO="http://deb.torproject.org/torproject.org";
-if [[ -z "$USE_VIRTUALENV" ]]; then
-  USE_VIRTUALENV=1
-fi
+
 usage()
 {
 cat << EOF
@@ -508,26 +506,12 @@ case $DISTRO_VERSION in
   echo "[+] Updating OS package list...";
   apt-get update 2>&1 > /dev/null;
   echo "[+] Installing packages for your system...";
-  DO "apt-get -y install curl git-core python python-pip python-dev python-setuptools build-essential libdumbnet1 python-dumbnet python-libpcap python-pypcap python-dnspython tor tor-geoipdb" "0"
+  DO "apt-get -y install python python-dev python-pip tor" "0"
 
   if [ "${INSTALL_PIP}" -eq "1" ] ; then
     echo "[+] Installing pip securely"
     install_pip_securely
   fi
-
-  # if [ "$USE_VIRTUALENV" -eq "1" ]; then
-  #   echo "[+] Using virtualenvironment..."
-  #   DO "apt-get -y install python-virtualenv virtualenvwrapper"
-  #   if [ ! -f ~/.virtualenvs/ooniprobe/bin/activate ]; then
-  #     # Set up the virtual environment
-  #     DO "mkdir -p ~/.virtualenvs" "0"
-  #     DO "virtualenv ~/.virtualenvs/ooniprobe" "0"
-  #     source ~/.virtualenvs/ooniprobe/bin/activate
-  #   else
-  #     source ~/.virtualenvs/ooniprobe/bin/activate
-  #   fi
-  # fi
-
 
   echo "[+] Installing all of the Python dependency requirements with pip!";
 
@@ -542,16 +526,6 @@ case $DISTRO_VERSION in
       exit 1;
     fi
   fi
-  
-  # echo "You can now install ooniprobe with: "
-  # echo ""
-  # echo "python setup.py install"
-  # echo ""
-  # echo "You should also be sure to edit your configuration appropriately by doing:"
-  # echo ""
-  # echo "cp /usr/share/ooni/ooniprobe.conf.sample ~/.ooni/ooniprobe.conf"
-  # echo ""
-  
 
   ;;
 *)
