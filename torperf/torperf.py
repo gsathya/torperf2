@@ -12,6 +12,8 @@ from twisted.internet.defer import Deferred
 from twisted.internet.protocol import Protocol
 from twisted.internet.endpoints import TCP4ClientEndpoint
 from twisted.web.client import Agent
+from twisted.web.server import Site
+from twisted.web.static import File
 from twisted.web.http_headers import Headers
 
 from txsocksx.http import SOCKS5Agent
@@ -27,7 +29,7 @@ class BeginningPrinter(Protocol):
 
     def connectionLost(self, reason):
         print 'Finished receiving body:', reason.getErrorMessage()
-        print 'Body:', ''.join(self.data)
+
         self.finished.callback(None)
 
 def cbRequest(response):
@@ -45,7 +47,7 @@ def cbShutdown(ignored):
 def do_request(state):
     torServerEndpoint = TCP4ClientEndpoint(reactor, '127.0.0.1', 9050)
     agent = SOCKS5Agent(reactor, proxyEndpoint=torServerEndpoint)
-    d = agent.request('GET', 'http://www.google.com/')
+    d = agent.request('GET', 'http://www.google.com')
     d.addCallback(cbRequest)
     d.addBoth(cbShutdown)
 
@@ -66,6 +68,10 @@ def updates(prog, tag, summary):
 config = txtorcon.TorConfig()
 config.OrPort = 1234
 config.SocksPort = perfconf.tor_config['socks_port']
+
+resource = File('static')
+factory = Site(resource)
+reactor.listenTCP(8888, factory)
 
 # Launch tor.
 d = txtorcon.launch_tor(config, reactor, progress_updates=updates)
