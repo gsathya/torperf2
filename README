@@ -1,7 +1,0 @@
-Read docs/torperf2.pdf for more details
-
-To set up -
-$ vagrant up
-$ cd /vagrant
-
-Install tor, txtorcon, txsocksx(https://github.com/habnabit/txsocksx), twisted
