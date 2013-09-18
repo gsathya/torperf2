@@ -71,11 +71,6 @@ config = txtorcon.TorConfig()
 config.OrPort = 1234
 config.SocksPort = perfconf.tor_config['socks_port']
 
-# resource = File('/torperf/torperf/static/')
-# factory = Site(resource)
-# reactor.listenTCP(8888, factory)
-# print "HTTP Server started."
-
 file_server = fileserver.TorPerfFileServer(reactor, perfconf.tor_config);
 file_server.startServer()
 
