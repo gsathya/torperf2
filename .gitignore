@@ -4,3 +4,4 @@ txsocksx/
 # sphinx related
 source/
 build/
+pip*

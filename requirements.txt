@@ -1,0 +1,5 @@
+Twisted>=11.1.0
+txtorcon>=0.7
+txsocksx>=0.0.2
+pyopenssl>=0.13.1
+pygeoip>=0.2.7
