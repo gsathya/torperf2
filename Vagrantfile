@@ -7,7 +7,7 @@
 $script = <<SCRIPT
 cd /torperf/
 
-./Vagrant_Specific/setup-dependencies.sh -y
+./contrib/setup-dependencies.sh -y
 
 # Kill tor if it's running
 service tor stop
