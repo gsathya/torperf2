@@ -49,7 +49,7 @@ def do_request(state):
     agent = SOCKS5Agent(reactor, proxyEndpoint=torServerEndpoint)
     d = agent.request('GET', 'http://www.google.com')
     d.addCallback(cbRequest)
-    d.addBoth(cbShutdown)
+    #    d.addBoth(cbShutdown)
 
 def setup_complete(proto):
     print "setup complete:", proto
