@@ -13,8 +13,10 @@ cd /torperf/
 service tor stop
 
 if [ "$?" = "0" ]; then
-  echo "Starting TorPerf"
-  python torperf/torperf.py
+  echo "All set! To start the server:"
+  echo "'vagrant ssh'"
+  echo "'cd /torperf/'"
+  echo "'python torperf/torperf.py'"
 else
   echo "Looks like we had some setup errors. Please log a bug here: https://github.com/gsathya/torperf2/issues Thanks!" 1>&2;
 fi

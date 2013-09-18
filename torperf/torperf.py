@@ -5,6 +5,8 @@
 import txtorcon
 import perfconf
 
+import fileserver
+
 from pprint import pformat
 
 from twisted.internet import reactor
@@ -69,9 +71,13 @@ config = txtorcon.TorConfig()
 config.OrPort = 1234
 config.SocksPort = perfconf.tor_config['socks_port']
 
-resource = File('static')
-factory = Site(resource)
-reactor.listenTCP(8888, factory)
+# resource = File('/torperf/torperf/static/')
+# factory = Site(resource)
+# reactor.listenTCP(8888, factory)
+# print "HTTP Server started."
+
+file_server = fileserver.TorPerfFileServer(reactor, perfconf.tor_config);
+file_server.startServer()
 
 # Launch tor.
 d = txtorcon.launch_tor(config, reactor, progress_updates=updates)

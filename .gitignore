@@ -5,3 +5,4 @@ txsocksx/
 source/
 build/
 pip*
+.DS_Store
