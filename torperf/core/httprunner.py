@@ -1,66 +1,77 @@
 import time
 
+from urlparse import urlparse
 from twisted.web import client
-from twisted.internet import defer, endpoints, reactor, interfaces
+from twisted.internet import defer, endpoints, reactor, interfaces, protocol
 from twisted.internet.protocol import Protocol
 from twisted.internet.endpoints import TCP4ClientEndpoint
-from txsocksx.http import SOCKS5Agent
+from txsocksx.http import SOCKS5Agent, SOCKS5ClientEndpoint
 from twisted.web._newclient import ResponseDone
 
 class HTTPRunner(object):
 
-    def __init__(self, reactor, socks_host, socks_port, ):
-        torServerEndpoint = TCP4ClientEndpoint(reactor, socks_host, socks_port)
-        self.socks_agent = SOCKS5Agent(reactor, proxyEndpoint=torServerEndpoint)
-        pass
+    def __init__(self, reactor, socks_host, socks_port):
+        self._reactor = reactor
+        self._socks_host = socks_host
+        self._socks_port = socks_port
 
-    def handleSocksResponse(self, response, times, d):
-        protocol = MeasuringHTTPPageGetter(times)
-        response.deliverBody(protocol)
-        # TODO: This is pretty broken until we do a timed socks agent
-        # need to also handle the response headers to get any unique ids
-        # we've set from our hosted server
-        protocol.finished.addCallback(d.callback)
+    def requestFinished(self, data, times, d):
+        if data is not None:
+            data = str(data)
+            times['DATA'] = (data[:200] + '..') if len(data) > 200 else data
+        d.callback(times)
 
     def get(self, url):
         d = defer.Deferred()
         times = {}
-        # TODO: This is incorrect, need to handle the http vs socks
-        # timings at the socks layer really
-        times['DATAREQUEST'] = "%.02f" % time.time()
-        sd = self.socks_agent.request('GET', bytes(url))
-        sd.addCallback(self.handleSocksResponse, times, d)
-        #TODO:  Handle error
+        url = bytes(url) # Fails on unicode
+
+        factory = MeasuringHTTPClientFactory(url, times, 15.0)
+        torServerEndpoint = TCP4ClientEndpoint(self._reactor, self._socks_host, self._socks_port)
+
+        hostname = urlparse(url).hostname
+        exampleEndpoint = SOCKS5ClientEndpoint(hostname, 80, torServerEndpoint)
+
+        times['URL'] = url
+        times['HOSTNAME'] = hostname
+
+        reqd = exampleEndpoint.connect(factory)
+        reqd.addErrback(self.requestFinished, times, d)
+
+        http = factory.deferred
+        http.addBoth(self.requestFinished, times, d)
+
         return d
 
     def post(self, url, data):
         pass
 
-class MeasuringHTTPPageGetter(Protocol):
+class MeasuringHTTPPageGetter(client.HTTPPageGetter):
 
-    def __init__(self, times):
+    def __init__(self):
         self.timer = interfaces.IReactorTime(reactor)
         self.sentBytes = 0
         self.receivedBytes = 0
-        self.times = times
         # self.expectedBytes = 0
         self.decileLogged = 0
-        self.finished = defer.Deferred()
 
     def connectionMade(self):
-        # This is not accurate due to agent?
-        #self.times['DATAREQUEST'] = "%.02f" % self.timer.seconds()
+        client.HTTPPageGetter.connectionMade(self)
+        self.times['DATAREQUEST'] = "%.02f" % self.timer.seconds()
         pass
 
     def sendCommand(self, command, path):
         self.sentBytes += len('%s %s HTTP/1.0\r\n' % (command, path))
         #self.expectedBytes = int(path.split('/')[-1])
+        client.HTTPPageGetter.sendCommand(self, command, path)
 
     def sendHeader(self, name, value):
         self.sentBytes += len('%s: %s\r\n' % (name, value))
+        client.HTTPPageGetter.sendHeader(self, name, value)
 
     def endHeaders(self):
         self.sentBytes += len('\r\n')
+        client.HTTPPageGetter.endHeaders(self)
 
     def dataReceived(self, data):
         if self.receivedBytes == 0 and len(data) > 0:
@@ -73,26 +84,35 @@ class MeasuringHTTPPageGetter(Protocol):
         #     self.decileLogged += 1
         #     self.times['DATAPERC%d' % (self.decileLogged * 10, )] = \
         #                "%.02f" % self.timer.seconds()
+        client.HTTPPageGetter.dataReceived(self, data)
 
     def handleResponse(self, response):
         self.times['WRITEBYTES'] = self.sentBytes
         self.times['READBYTES'] = self.receivedBytes
         self.times['DATACOMPLETE'] = "%.02f" % self.timer.seconds()
         self.times['DIDTIMEOUT'] = 0
+        client.HTTPPageGetter.handleResponse(self, response)
 
     def timeout(self):
         self.times['WRITEBYTES'] = self.sentBytes
         self.times['READBYTES'] = self.receivedBytes
         self.times['DIDTIMEOUT'] = 1
+        client.HTTPPageGetter.timeout(self)
 
-    def connectionLost(self, reason):
-        # TODO: Fix this
-        if reason.getErrorMessage() == "Response body fully received":
-            self.times['WRITEBYTES'] = self.sentBytes
-            self.times['READBYTES'] = self.receivedBytes
-            self.times['DATACOMPLETE'] = "%.02f" % self.timer.seconds()
-            self.times['DIDTIMEOUT'] = 0
-        else:
-            self.times['FAILREASON'] = reason.getErrorMessage()
-            self.times['DEBUG'] = reason
-        self.finished.callback(self.times)
+class MeasuringHTTPClientFactory(client.HTTPClientFactory):
+
+    def __init__(self, url, times, timeout):
+        self.times = times
+        client.HTTPClientFactory.__init__(self, url, timeout=timeout)
+        self.protocol = MeasuringHTTPPageGetter
+
+    def buildProtocol(self, addr):
+        p = protocol.ClientFactory.buildProtocol(self, addr)
+        p.followRedirect = self.followRedirect
+        p.afterFoundGet = self.afterFoundGet
+        if self.timeout:
+            timeoutCall = reactor.callLater(self.timeout, p.timeout)
+            self.deferred.addBoth(self._cancelTimeout, timeoutCall)
+        p.times = self.times
+        return p
+
