@@ -1,6 +1,6 @@
 {
 	"interval": 60,
 	"requests": [
-		"http://google.com/search?q=hello"
+		"http://www.google.com/search?q=hello"
 	]
 }
