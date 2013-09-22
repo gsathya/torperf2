@@ -38,8 +38,9 @@ class SimpleHttpExperiment(Experiment):
         torcfg.OrPort = 1234 
         torcfg.SocksPort = self.socks_port
 
-        # Record tor version here
-        d = txtorcon.launch_tor(torcfg, reactor, progress_updates=self.tor_progress)
+        d = txtorcon.launch_tor(torcfg, reactor,
+            progress_updates=self.tor_progress,
+            timeout=60.0)
         self.socket_time = time.time()
         # Wait a small time?
 
