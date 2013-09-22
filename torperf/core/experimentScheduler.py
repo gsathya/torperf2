@@ -1,4 +1,5 @@
 import os
+import errno
 import json
 import time
 
@@ -39,25 +40,28 @@ class ExperimentRunner(object):
         # TODO: Timeout based on experiment timeout
         d.addCallback(self.finished, experiment)
         d.addErrback(self.errored, experiment)
-        return self.defers[experiment.name]
+        return self.defers[experiment.name] # Just use experiment.finished
 
     # This should only really be called if there's an error
     # during setup and no results could be gained at all
     def errored(self, error, experiment):
         print "Experiment %s failed with error %s at %s" % (experiment.name, error, time.time())
         # TODO: ensure the error has a nested results set and try postprocess
+        pprint(experiment.results)
         experiment.last_run = time.time()
+        experiment.results.append({'ERROR': str(error)})
+        self.save_results(experiment)
         self.defers[experiment.name].callback(None)
 
-    def finished(self, results, experiment):
+    def finished(self, ignore, experiment):
         print "Experiment %s finished at %s" % (experiment.name, time.time())
-        pprint(results)
+        pprint(experiment.results)
         experiment.last_run = time.time()
-        self.postprocess_results(results, experiment)
-        self.save_results(results)
+        self.postprocess_results(experiment)
+        self.save_results(experiment)
         self.defers[experiment.name].callback(None)
 
-    def postprocess_results(self, results, experiment):
+    def postprocess_results(self, experiment):
         # Find the serverside data for the experiment if applicable
         # Should be a unique key in the results file to allow this
 
@@ -67,9 +71,29 @@ class ExperimentRunner(object):
         # Ensure that the results contain the name of the experiment
         pass
 
-    def save_results(self, results):
-        # TODO
-        pass
+    def save_results(self, experiment):
+        def make_sure_dirs_exist(path):
+            try:
+                os.makedirs(path)
+            except OSError as err:
+                if err.errno != errno.EEXIST:
+                    raise
+
+        results = experiment.results
+        pprint(results)
+        try:
+            dirname = "results/" + experiment.name + "/"
+            make_sure_dirs_exist(dirname)
+
+            for r in results:
+                if not 'START' in r.keys():
+                    r['START'] = experiment.start_time
+                filename = dirname + str(r['START']) + '.json'
+                with open(filename, "w") as results_file:
+                    results_file.write(json.dumps(r) + "\n")
+        except Exception as e:
+            print "Error: "
+            print e
 
 class ExperimentScheduler(object):
     def __init__(self, reactor, config):
