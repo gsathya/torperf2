@@ -1,5 +1,5 @@
 Twisted>=11.1.0
-git+https://github.com/Ryman/txtorcon.git@c8bfa5cc4fb5b419103987b45caef8922b6c59ca
+-e git+https://github.com/Ryman/txtorcon.git@f4068cc752331b959beb885978fad4df8b8fb1c5#egg=txtorcon
 # Bugged
 #txtorcon>=0.7
 txsocksx>=0.0.2
