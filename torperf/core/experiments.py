@@ -85,17 +85,11 @@ class SimpleHttpExperiment(Experiment):
         self.results.append(results)
         if len(self.results) == len(self.requests):
             # Cleanup our tor instance
-            #d = self.tor_instance.quit()
-            # This callback seems to return before tor has actually quit
-            #d.addCallback(self.return_results)
-            # I don't want to do this, but the above doesn't seem to work.
-            #os.kill(self.tor_instance.pid, signal.SIGKILL)
             try:
                 self.tor_protoprocess.transport.signalProcess('KILL')
-            except Exception:
-                # Ignore the typeerror for no exit code (txtorcon bug?)
-                print "Ignoring typeerror"
-            self.return_results(None)
+            except Exception as ex:
+                print "Caught exception:", ex
+            self.return_results()
 
-    def return_results(self, cbval):
+    def return_results(self):
         self.finished.callback(self.results)
