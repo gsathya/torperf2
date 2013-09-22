@@ -10,6 +10,7 @@ If all goes well, then you can ssh into the box to continue development:
 
     $ vagrant ssh
     $ cd /torperf
+    $ trial test # Run tests
     $ python torperf/torperf.py
 
 # Non-Vagrant development:
