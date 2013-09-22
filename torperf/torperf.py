@@ -5,8 +5,8 @@
 import txtorcon
 import perfconf
 
-from core.fileserver import TorPerfFileServer
-from core.experimentScheduler import ExperimentScheduler
+from torperf.core.fileserver import TorPerfFileServer
+from torperf.core.experimentScheduler import ExperimentScheduler
 
 from twisted.internet import reactor, task
 from twisted.internet.defer import Deferred

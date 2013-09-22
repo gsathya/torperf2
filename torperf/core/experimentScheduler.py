@@ -3,7 +3,7 @@ import errno
 import json
 import time
 
-from core.experiments import SimpleHttpExperiment
+from torperf.core.experiments import SimpleHttpExperiment
 from twisted.internet import defer
 from pprint import pprint
 
@@ -22,7 +22,7 @@ class ExperimentFactory(object):
         if 'requests' in config.keys():
             return self.init_simple_experiment(name, experiment_dir, config)
 
-        return ValueError("Config is not setup in an expected manner.")
+        raise ValueError("Config is not setup in an expected manner.")
 
     def init_simple_experiment(self, name, experiment_dir, config):
         return SimpleHttpExperiment(name, config)

@@ -4,7 +4,7 @@ import time
 import signal
 
 from twisted.internet.defer import Deferred
-from httprunner import HTTPRunner
+from torperf.core.httprunner import HTTPRunner
 from pprint import pprint
 
 class Experiment(object):
@@ -12,6 +12,8 @@ class Experiment(object):
         self._config = config
         self.name = name
         self.interval = self._config['interval']
+        if self.interval < 60:
+            raise ValueError("Interval is too low, must be >= 60 seconds.")
         self.last_run = 0
 
     def next_runtime(self):
@@ -24,6 +26,8 @@ class SimpleHttpExperiment(Experiment):
     def __init__(self, name, config):
         Experiment.__init__(self, name, config)
         self.requests = self._config['requests']
+        if len(self.requests) < 1:
+            raise ValueError("No requests urls specified.")
 
     def run(self, reactor):
         self.results = []
