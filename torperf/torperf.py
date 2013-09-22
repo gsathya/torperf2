@@ -5,6 +5,8 @@
 import txtorcon
 import perfconf
 
+from fileserver import *
+
 from pprint import pformat
 
 from twisted.internet import reactor
@@ -69,7 +71,7 @@ config = txtorcon.TorConfig()
 config.OrPort = 1234
 config.SocksPort = perfconf.tor_config['socks_port']
 
-resource = File('static')
+resource = StaticFile('static')
 factory = Site(resource)
 reactor.listenTCP(8888, factory)
 
