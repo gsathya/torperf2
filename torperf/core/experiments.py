@@ -6,6 +6,7 @@ import signal
 from twisted.internet.defer import Deferred
 from torperf.core.httprunner import HTTPRunner
 from pprint import pprint
+from urlparse import urlparse
 
 class Experiment(object):
     def __init__(self, name, config):
@@ -42,9 +43,28 @@ class Experiment(object):
 class SimpleHttpExperiment(Experiment):
     def __init__(self, name, config):
         Experiment.__init__(self, name, config)
-        self.requests = self._config['requests']
-        if len(self.requests) < 1:
-            raise ValueError("No requests urls specified.")
+        self.set_requests()
+
+    def set_requests(self):
+        r = self._config['requests']
+        
+        if isinstance(r, list):
+            if len(r) < 1:
+                raise ValueError("No requests urls specified.")
+            else:
+                for url in r:
+                    if not self.check_valid_url(url):
+                        raise ValueError("'%s' is not a valid url" % url)
+                self.requests = r
+        else:
+            # Handle a single url
+            if isinstance(r, str) and self.check_valid_url(r):
+                self.requests = [r]
+            else:
+                raise ValueError("No requests urls specified.")
+
+    def check_valid_url(self, url):
+        return urlparse(url).hostname != None
 
     def run(self, reactor):
         self.results = []
