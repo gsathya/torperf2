@@ -11,7 +11,7 @@ If all goes well, then you can ssh into the box to continue development:
     $ vagrant ssh
     $ cd /torperf
     $ trial test # Run tests
-    $ python torperf/torperf.py
+    $ python torperf.py
 
 # Non-Vagrant development:
 If you would rather not use Vagrant, please install the following packages:     

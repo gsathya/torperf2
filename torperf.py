@@ -2,14 +2,12 @@
 # See LICENSE for licensing information
 #!/usr/bin/env python
 
-import txtorcon
 import perfconf
 
 from torperf.core.fileserver import TorPerfFileServer
 from torperf.core.experimentScheduler import ExperimentScheduler
 
 from twisted.internet import reactor, task
-from twisted.internet.defer import Deferred
 
 file_server = TorPerfFileServer(reactor, perfconf.tor_config);
 file_server.startServer()
