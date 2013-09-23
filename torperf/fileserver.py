@@ -8,7 +8,6 @@ from datetime import datetime
 from twisted.web.server import Site
 from twisted.web.static import File
 from twisted.web.resource import Resource
-from twisted.internet.endpoints import TCP4ServerEndpoint
 
 class StaticFile(File):
     def render_GET(self, request):
