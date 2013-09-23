@@ -9,12 +9,29 @@ from pprint import pprint
 
 class Experiment(object):
     def __init__(self, name, config):
-        self._config = config
-        self.name = name
+        self.set_config(config)
+        self.set_name(name)
+        self.set_interval()
+        self.last_run = 0
+
+    def set_name(self, name):
+        if isinstance(name, str) and len(name) > 0:
+            self.name = name
+        else:
+            raise ValueError("An experiment must have a name.")
+
+    def set_config(self, config):
+        if config is not None:
+            self._config = config
+        else:
+            raise ValueError("An experiment must have a config.")
+
+    def set_interval(self):
+        if not 'interval' in self._config.keys():
+            raise KeyError("An experiment's config must have an interval.")
         self.interval = self._config['interval']
         if self.interval < 60:
             raise ValueError("Interval is too low, must be >= 60 seconds.")
-        self.last_run = 0
 
     def next_runtime(self):
         return self.last_run + self.interval
