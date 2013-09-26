@@ -47,6 +47,17 @@ class TestExperimentBase(unittest.TestCase):
         self.assertEqual(600, xp.interval)
         self.assertEqual(0, xp.last_run)
 
+    def test_tor_version(self):
+        cfg = {
+            'interval': 600,
+        }
+        xp = Experiment("name", cfg)
+        self.assertEqual(None, xp.tor_version)
+
+        cfg['tor_version'] = 'version_string'
+        xp = Experiment("name", cfg)
+        self.assertEqual('version_string', xp.tor_version)
+
 class TestSimpleHttpExperiment(unittest.TestCase):
 
     def test_init(self):
