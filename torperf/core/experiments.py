@@ -13,7 +13,14 @@ class Experiment(object):
         self.set_config(config)
         self.set_name(name)
         self.set_interval()
+        self.set_tor_version()
         self.last_run = 0
+
+    def set_tor_version(self):
+        if 'tor_version' in self._config.keys():
+            self.tor_version = self._config['tor_version']
+        else:
+            self.tor_version = None
 
     def set_name(self, name):
         if isinstance(name, str) and len(name) > 0:
