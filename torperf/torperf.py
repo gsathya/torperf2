@@ -49,7 +49,7 @@ def cbShutdown(ignored):
 def do_request(state):
     torServerEndpoint = TCP4ClientEndpoint(reactor, '127.0.0.1', 9050)
     agent = SOCKS5Agent(reactor, proxyEndpoint=torServerEndpoint)
-    d = agent.request('GET', 'http://www.google.com')
+    d = agent.request('GET', perfconf.server_config["ip"])
     d.addCallback(cbRequest)
     #    d.addBoth(cbShutdown)
 
