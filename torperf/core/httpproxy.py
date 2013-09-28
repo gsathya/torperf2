@@ -1,4 +1,3 @@
-from twisted.python import log
 from twisted.web import http, proxy
 from twisted.internet import reactor, interfaces
 from twisted.internet.endpoints import TCP4ClientEndpoint
@@ -9,25 +8,17 @@ class MeasuredHttpProxyClient(proxy.ProxyClient):
     def __init__(self, command, rest, version, headers, data, father):
         proxy.ProxyClient.__init__(self, command, rest, version, headers, data, father)
         self.data = data
-        self.timed_out = 0
         self.timer = interfaces.IReactorTime(reactor)
+        self.timed_out = 0
         self.decileLogged = 0
-        father.times = {}
-        # father.notifyFinish().addErrback(self._fatherFailed)
         self.receivedBytes = 0
         self.sentBytes = 0
         # Modify outgoing headers here via self.father
+        father.times = {}
         self.setUniqueID()
 
     def setUniqueID(self):
         self.handleHeader('X-TorPerfProxyId', 42)
-
-    def _fatherFailed(self, err):
-        print "**********"
-        print "FATHER FINISHED"
-        print err
-        print "**********"
-        self._finished = True
 
     def connectionMade(self):
         self.father.times['DATAREQUEST'] = "%.02f" % self.timer.seconds()
@@ -44,8 +35,6 @@ class MeasuredHttpProxyClient(proxy.ProxyClient):
 
     def handleResponsePart(self, buffer):
         # change response part here
-        log.msg("Content: %s" % (buffer[:50],))
-        
         if self.receivedBytes == 0 and len(buffer) > 0:
             self.father.times['DATARESPONSE'] = "%.02f" % self.timer.seconds()
         self.receivedBytes += len(buffer)
@@ -91,12 +80,12 @@ class MeasuredHttpProxyClientFactory(proxy.ProxyClientFactory):
         self.father.responseHeaders.addRawHeader("Content-Type", "text/html")
         self.father.write("<H1>Could not connect</H1>")
         self.father.write(str(reason))
-        
+
         print "Errored: %s" % str(reason)
 
         if hasattr(self.father, 'times'):
             print "Errored: %s" % self.father.times
-        
+
         self.father.finish()
 
 class MeasuredHttpProxyRequest(proxy.ProxyRequest):
