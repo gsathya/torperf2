@@ -47,7 +47,6 @@ class ExperimentRunner(object):
     def errored(self, error, experiment):
         print "Experiment %s failed with error %s at %s" % (experiment.name, error, time.time())
         # TODO: ensure the error has a nested results set and try postprocess
-        pprint(experiment.results)
         experiment.last_run = time.time()
         experiment.results.append({'ERROR': str(error)})
         self.save_results(experiment)
@@ -55,7 +54,6 @@ class ExperimentRunner(object):
 
     def finished(self, ignore, experiment):
         print "Experiment %s finished at %s" % (experiment.name, time.time())
-        pprint(experiment.results)
         experiment.last_run = time.time()
         self.postprocess_results(experiment)
         self.save_results(experiment)
