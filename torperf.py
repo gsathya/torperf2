@@ -24,4 +24,11 @@ def setup_heartbeat():
     lc.start(10.0)
 
 setup_heartbeat()
+
+from torperf.core.httpproxy import MeasuredHttpProxyFactory
+
+f = MeasuredHttpProxyFactory()
+
+reactor.listenTCP(8123, f)
+
 reactor.run()
