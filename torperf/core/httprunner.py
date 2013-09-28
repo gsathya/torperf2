@@ -8,6 +8,30 @@ from twisted.internet.endpoints import TCP4ClientEndpoint
 from txsocksx.http import SOCKS5Agent, SOCKS5ClientEndpoint
 from twisted.web._newclient import ResponseDone
 
+from twisted.python.log import err
+from twisted.web.client import ProxyAgent, RedirectAgent
+from twisted.internet import reactor
+from twisted.internet.endpoints import TCP4ClientEndpoint
+
+from twisted.web.http_headers import Headers
+
+class DebugPrinter(Protocol):
+    def __init__(self, finished, times):
+        self.finished = finished
+        self.remaining = 500
+        self.times = times
+        self.data = []
+
+    def dataReceived(self, bytes):
+        if self.remaining:
+            self.data.append(bytes[:self.remaining])
+            self.remaining -= len(bytes[:self.remaining])
+
+    def connectionLost(self, reason):
+        #print 'Finished receiving body:', reason.getErrorMessage()
+        self.times['DATA'] = self.data
+        self.finished.callback(self.times)
+
 class HTTPRunner(object):
 
     def __init__(self, reactor, socks_host, socks_port):
@@ -15,104 +39,34 @@ class HTTPRunner(object):
         self._socks_host = socks_host
         self._socks_port = socks_port
 
-    def requestFinished(self, data, times, d):
-        if data is not None:
-            data = str(data)
-            times['DATA'] = (data[:200] + '..') if len(data) > 200 else data
-        d.callback(times)
+    def requestFinished(self, response, times, d):
+        # if data.code == 200
+        #    Non 200 results?
+        if hasattr(response, 'headers'):
+            if response.headers.hasHeader('X-TorPerfProxyId'):
+                times['ProxyUniqueId'] =  response.headers.getRawHeaders('X-TorPerfProxyId')[0]
+
+        if hasattr(response, 'deliverBody'):
+            response.deliverBody(DebugPrinter(d, times))
+        else:
+            d.callback(times)
 
     def get(self, url):
         d = defer.Deferred()
         times = {}
         url = bytes(url) # Fails on unicode
 
-        factory = MeasuringHTTPClientFactory(url, times, 15.0)
-        torServerEndpoint = TCP4ClientEndpoint(self._reactor, self._socks_host, self._socks_port)
+        endpoint = TCP4ClientEndpoint(reactor, "localhost", 8123)
+        agent = RedirectAgent(ProxyAgent(endpoint))
+        d2 = agent.request(
+            'GET',
+            url,
+            Headers({'User-Agent': ['Mozilla/5.0 (Macintosh; Intel Mac OS X 10.8; rv:24.0) Gecko/20100101 Firefox/24.0']}),
+            None
+        )
 
-        hostname = urlparse(url).hostname
-        exampleEndpoint = SOCKS5ClientEndpoint(hostname, 80, torServerEndpoint)
-
-        times['URL'] = url
-        times['HOSTNAME'] = hostname
-
-        reqd = exampleEndpoint.connect(factory)
-        reqd.addErrback(self.requestFinished, times, d)
-
-        http = factory.deferred
-        http.addBoth(self.requestFinished, times, d)
-
+        d2.addBoth(self.requestFinished, times, d)
         return d
 
     def post(self, url, data):
         pass
-
-class MeasuringHTTPPageGetter(client.HTTPPageGetter):
-
-    def __init__(self):
-        self.timer = interfaces.IReactorTime(reactor)
-        self.sentBytes = 0
-        self.receivedBytes = 0
-        # self.expectedBytes = 0
-        self.decileLogged = 0
-
-    def connectionMade(self):
-        client.HTTPPageGetter.connectionMade(self)
-        self.times['DATAREQUEST'] = "%.02f" % self.timer.seconds()
-        pass
-
-    def sendCommand(self, command, path):
-        self.sentBytes += len('%s %s HTTP/1.0\r\n' % (command, path))
-        #self.expectedBytes = int(path.split('/')[-1])
-        client.HTTPPageGetter.sendCommand(self, command, path)
-
-    def sendHeader(self, name, value):
-        self.sentBytes += len('%s: %s\r\n' % (name, value))
-        client.HTTPPageGetter.sendHeader(self, name, value)
-
-    def endHeaders(self):
-        self.sentBytes += len('\r\n')
-        client.HTTPPageGetter.endHeaders(self)
-
-    def dataReceived(self, data):
-        if self.receivedBytes == 0 and len(data) > 0:
-            self.times['DATARESPONSE'] = "%.02f" % self.timer.seconds()
-        # Should probably dump data to a file for debug in the short term
-        self.receivedBytes += len(data)
-        # while (self.decileLogged < 9 and
-        #       (self.receivedBytes * 10) / self.expectedBytes >
-        #        self.decileLogged):
-        #     self.decileLogged += 1
-        #     self.times['DATAPERC%d' % (self.decileLogged * 10, )] = \
-        #                "%.02f" % self.timer.seconds()
-        client.HTTPPageGetter.dataReceived(self, data)
-
-    def handleResponse(self, response):
-        self.times['WRITEBYTES'] = self.sentBytes
-        self.times['READBYTES'] = self.receivedBytes
-        self.times['DATACOMPLETE'] = "%.02f" % self.timer.seconds()
-        self.times['DIDTIMEOUT'] = 0
-        client.HTTPPageGetter.handleResponse(self, response)
-
-    def timeout(self):
-        self.times['WRITEBYTES'] = self.sentBytes
-        self.times['READBYTES'] = self.receivedBytes
-        self.times['DIDTIMEOUT'] = 1
-        client.HTTPPageGetter.timeout(self)
-
-class MeasuringHTTPClientFactory(client.HTTPClientFactory):
-
-    def __init__(self, url, times, timeout):
-        self.times = times
-        client.HTTPClientFactory.__init__(self, url, timeout=timeout)
-        self.protocol = MeasuringHTTPPageGetter
-
-    def buildProtocol(self, addr):
-        p = protocol.ClientFactory.buildProtocol(self, addr)
-        p.followRedirect = self.followRedirect
-        p.afterFoundGet = self.afterFoundGet
-        if self.timeout:
-            timeoutCall = reactor.callLater(self.timeout, p.timeout)
-            self.deferred.addBoth(self._cancelTimeout, timeoutCall)
-        p.times = self.times
-        return p
-
