@@ -15,10 +15,9 @@ class MeasuredHttpProxyClient(proxy.ProxyClient):
         self.sentBytes = 0
         # Modify outgoing headers here via self.father
         father.times = {}
-        self.setUniqueID()
 
-    def setUniqueID(self):
-        self.handleHeader('X-TorPerfProxyId', 42)
+    def setUniqueID(self, id):
+        self.handleHeader('X-TorPerfProxyId', id)
 
     def connectionMade(self):
         self.father.times['DATAREQUEST'] = "%.02f" % self.timer.seconds()
@@ -63,13 +62,28 @@ class MeasuredHttpProxyClient(proxy.ProxyClient):
 
 class MeasuredHttpProxyClientFactory(proxy.ProxyClientFactory):
     protocol = MeasuredHttpProxyClient
-    def __init__(self, url, *args, **kwargs):
-        proxy.ProxyClientFactory.__init__(self, url, *args, **kwargs)
+    counter = 0
+    init_time = None
+
+    @classmethod
+    def get_unique_id(cls, timer):
+        cls.counter += 1
+        if cls.init_time == None:
+            cls.init_time = "%.02f" % timer.seconds()
+        return cls.init_time + '_' + str(cls.counter)
+
+    def __init__(self, *args, **kwargs):
+        proxy.ProxyClientFactory.__init__(self, *args, **kwargs)
+        timer = interfaces.IReactorTime(reactor)
+        self.unique_id = MeasuredHttpProxyClientFactory.get_unique_id(timer)
+        print "MeasuredHttpProxyClientFactory init called, counter is %s" % self.unique_id
 
     def buildProtocol(self, addr):
         #TODO: Add a timeout
-        return self.protocol(self.command, self.rest, self.version,
+        p = self.protocol(self.command, self.rest, self.version,
                         self.headers, self.data, self.father)
+        p.setUniqueID(self.unique_id)
+        return p
 
     def clientConnectionFailed(self, connector, reason):
         """
