@@ -73,49 +73,11 @@ class SimpleHttpExperiment(Experiment):
     def check_valid_url(self, url):
         return urlparse(url).hostname != None
 
-    def run(self, reactor):
-        self.results = []
+    def run(self, reactor, http_port):
         self.finished = Deferred()
 
-        # Setup a tor client on a unique port
-        torcfg = txtorcon.TorConfig()
+        runner = HTTPRunner(reactor, '127.0.0.1', http_port)
         self.start_time = time.time()
-
-        # TODO: Choose random (free) port for both of these
-        self.socks_port = 9050
-        torcfg.OrPort = 1234 
-        torcfg.SocksPort = self.socks_port
-
-        d = txtorcon.launch_tor(torcfg, reactor,
-            progress_updates=self.tor_progress,
-            timeout=60.0)
-        self.socket_time = time.time()
-        # Wait a small time?
-
-        d.addCallback(self.tor_setup_complete, reactor)
-        d.addErrback(self.handle_failure)
-
-        return self.finished
-
-    def tor_progress(self, progress, tag, summary):
-        # TODO: Log whatever is valuable
-        print "%d%%: %s" % (progress, summary)
-
-    def tor_setup_complete(self, proto, reactor):
-        print "Tor setup complete: ", proto
-        self.tor_protoprocess = proto
-        self.tor_instance = proto.tor_protocol
-        
-        state = txtorcon.TorState(proto.tor_protocol)
-        state.post_bootstrap.addCallback(self.do_requests, reactor)
-        state.post_bootstrap.addErrback(self.handle_failure)
-
-    def handle_failure(self, arg):
-        self.finished.errback(arg)
-
-    def do_requests(self, state, reactor):
-        runner = HTTPRunner(reactor, '127.0.0.1', self.socks_port)
-        self.tor_instance.pid = state.tor_pid
 
         for url in self.requests:
             # TODO: Reset identity
@@ -123,20 +85,22 @@ class SimpleHttpExperiment(Experiment):
             d = runner.get(url)
             d.addCallback(self.save_results, url)
 
+        return self.finished
+
     def save_results(self, results, url):
         results['START'] = self.start_time
-        results['SOCKET'] = self.socket_time
-        results['SOCKS'] = self.socks_port
-        results['TOR_VERSION'] = self.tor_instance.version
+        # results['SOCKET'] = self.socket_time
+        #results['SOCKS'] = self.socks_port
+        #results['TOR_VERSION'] = self.tor_instance.version
 
         # The results could be an error
         self.results.append(results)
         if len(self.results) == len(self.requests):
             # Cleanup our tor instance
-            try:
-                self.tor_protoprocess.transport.signalProcess('KILL')
-            except Exception as ex:
-                print "Caught exception:", ex
+            # try:
+            #     self.tor_protoprocess.transport.signalProcess('KILL')
+            # except Exception as ex:
+            #     print "Caught exception:", ex
             self.return_results()
 
     def return_results(self):
