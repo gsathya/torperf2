@@ -94,8 +94,7 @@ class TorHttpProxy:
         self.tor_protoprocess = proto
         self.tor_instance = proto.tor_protocol
 
-        # TODO: Pass self.socks_port
-        f = MeasuredHttpProxyFactory()
+        f = MeasuredHttpProxyFactory(self.socks_port)
         reactor.listenTCP(self.http_port, f)
 
         state = txtorcon.TorState(proto.tor_protocol)

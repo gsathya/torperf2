@@ -134,7 +134,7 @@ class MeasuredHttpProxyRequest(proxy.ProxyRequest):
         clientFactory = class_(self.method, rest, self.clientproto, headers,
                                s, self)
 
-        torEndpoint = TCP4ClientEndpoint(self.reactor, '127.0.0.1', 9050)
+        torEndpoint = TCP4ClientEndpoint(self.reactor, '127.0.0.1', self.channel.socks_port)
         socksEndpoint = SOCKS5ClientEndpoint(host, port, torEndpoint)
 
         socksReq = socksEndpoint.connect(clientFactory)
@@ -150,3 +150,7 @@ class MeasuredHttpProxy(proxy.Proxy):
 class MeasuredHttpProxyFactory(http.HTTPFactory):
     #TODO TAKE A SOCKS PORT
     protocol = MeasuredHttpProxy
+
+    def __init__(self, socks_port, **kwargs):
+        self.protocol.socks_port = socks_port
+        http.HTTPFactory.__init__(self, **kwargs)
