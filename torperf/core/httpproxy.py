@@ -140,7 +140,8 @@ class MeasuredHttpProxyRequest(proxy.ProxyRequest):
         socksReq = socksEndpoint.connect(clientFactory)
         def socks_error(reason):
             print "SOCKS ERROR: %s" % str(reason)
-            self.connectionLost(reason)
+            # TODO: Log this error in times?
+            self.finish()
         socksReq.addErrback(socks_error)
 
 class MeasuredHttpProxy(proxy.Proxy):
