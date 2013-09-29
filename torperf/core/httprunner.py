@@ -34,17 +34,22 @@ class DebugPrinter(Protocol):
 
 class HTTPRunner(object):
 
-    def __init__(self, reactor, socks_host, socks_port):
+    def __init__(self, reactor, proxy_host, proxy_port):
         self._reactor = reactor
-        self._socks_host = socks_host
-        self._socks_port = socks_port
+        self._proxy_host = proxy_host
+        self._proxy_port = proxy_port
 
     def requestFinished(self, response, times, d):
+        if hasattr(response, 'code'):
+            times['HTTPSTATUS'] = response.code
+        else:
+            times['HTTPERROR'] = str(response)
+            d.callback(times)
+            return
         # if data.code == 200
         #    Non 200 results?
         if hasattr(response, 'headers'):
-            if response.headers.hasHeader('X-TorPerfProxyId'):
-                times['ProxyUniqueId'] =  response.headers.getRawHeaders('X-TorPerfProxyId')[0]
+            times['headers'] = list(response.headers.getAllRawHeaders())
 
         if hasattr(response, 'deliverBody'):
             response.deliverBody(DebugPrinter(d, times))
@@ -53,10 +58,10 @@ class HTTPRunner(object):
 
     def get(self, url):
         d = defer.Deferred()
-        times = {}
         url = bytes(url) # Fails on unicode
+        times = { 'URL': url }
 
-        endpoint = TCP4ClientEndpoint(reactor, "localhost", 8123)
+        endpoint = TCP4ClientEndpoint(reactor, self._proxy_host, self._proxy_port)
         agent = RedirectAgent(ProxyAgent(endpoint))
         d2 = agent.request(
             'GET',
