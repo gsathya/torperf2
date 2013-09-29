@@ -49,7 +49,9 @@ class HTTPRunner(object):
         # if data.code == 200
         #    Non 200 results?
         if hasattr(response, 'headers'):
-            times['headers'] = list(response.headers.getAllRawHeaders())
+            times['headers'] = dict(response.headers.getAllRawHeaders())
+        else:
+            times['headers'] = {}
 
         if hasattr(response, 'deliverBody'):
             response.deliverBody(DebugPrinter(d, times))

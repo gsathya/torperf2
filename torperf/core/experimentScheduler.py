@@ -69,20 +69,23 @@ class ExperimentRunner(object):
     def finished(self, ignore, experiment, proxy):
         print "Experiment %s finished at %s" % (experiment.name, time.time())
         experiment.last_run = time.time()
-        self.postprocess_results(experiment)
+        self.postprocess_results(experiment, proxy)
         self.save_results(experiment)
         self.torManager.free(proxy)
         self.defers[experiment.name].callback(None)
 
-    def postprocess_results(self, experiment):
-        # Find the serverside data for the experiment if applicable
-        # Should be a unique key in the results file to allow this
+    def postprocess_results(self, experiment, proxy):
+        for r in experiment.results:
+            if 'headers' in r.keys():
+                if 'X-Torperfproxyid' in r['headers']:
+                    # get the server data from the proxy
+                    id = r['headers']['X-Torperfproxyid'][0]
+                    proxy_timings = proxy.get_timings(id)
+                    for key in proxy_timings.keys():
+                        # Only overwrite it if the experiment hasn't chosen their own value
+                        if key not in r:
+                            r[key] = proxy_timings[key]
 
-        # Add experiment start and finish time if they haven't been set
-        # by the experiment
-
-        # Ensure that the results contain the name of the experiment
-        pass
 
     def save_results(self, experiment):
         def make_sure_dirs_exist(path):

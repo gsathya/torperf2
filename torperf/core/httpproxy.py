@@ -14,7 +14,6 @@ class MeasuredHttpProxyClient(proxy.ProxyClient):
         self.receivedBytes = 0
         self.sentBytes = 0
         # Modify outgoing headers here via self.father
-        father.times = {}
 
     def setUniqueID(self, id):
         self.handleHeader('X-TorPerfProxyId', id)
@@ -137,6 +136,9 @@ class MeasuredHttpProxyRequest(proxy.ProxyRequest):
         torEndpoint = TCP4ClientEndpoint(self.reactor, '127.0.0.1', self.channel.socks_port)
         socksEndpoint = SOCKS5ClientEndpoint(host, port, torEndpoint)
 
+        self.times = {}
+        self.channel.datastore[clientFactory.unique_id] = self.times
+
         socksReq = socksEndpoint.connect(clientFactory)
         def socks_error(reason):
             print "SOCKS ERROR: %s" % str(reason)
@@ -151,6 +153,7 @@ class MeasuredHttpProxyFactory(http.HTTPFactory):
     #TODO TAKE A SOCKS PORT
     protocol = MeasuredHttpProxy
 
-    def __init__(self, socks_port, **kwargs):
+    def __init__(self, datastore, socks_port, **kwargs):
+        self.protocol.datastore = datastore
         self.protocol.socks_port = socks_port
         http.HTTPFactory.__init__(self, **kwargs)

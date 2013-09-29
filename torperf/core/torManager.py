@@ -66,6 +66,8 @@ class TorHttpProxy:
         self.available = False
         self.ready = defer.Deferred()
         
+        self.timings = {}
+
         self.socks_port = 9050 + port_offset
         self.http_port = 10050 + port_offset
         self.or_port = 11050 + port_offset
@@ -85,6 +87,16 @@ class TorHttpProxy:
         d.addCallback(self.tor_setup_complete, reactor)
         d.addErrback(self.ready.errback)
 
+    def get_timings(self, identifier):
+        if identifier in self.timings:
+            result = self.timings[identifier]
+            # Remove from results set
+            del self.timings[identifier]
+            return result
+        else:
+            print "No timings found for %s" % identifier
+            return None
+
     def tor_progress(self, progress, tag, summary):
         # TODO: Log whatever is valuable
         print "%d%%: %s" % (progress, summary)
@@ -94,7 +106,7 @@ class TorHttpProxy:
         self.tor_protoprocess = proto
         self.tor_instance = proto.tor_protocol
 
-        f = MeasuredHttpProxyFactory(self.socks_port)
+        f = MeasuredHttpProxyFactory(self.timings, self.socks_port)
         reactor.listenTCP(self.http_port, f)
 
         state = txtorcon.TorState(proto.tor_protocol)
