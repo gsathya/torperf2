@@ -4,7 +4,8 @@ import json
 import time
 
 from torperf.core.experiments import SimpleHttpExperiment
-from twisted.internet import defer
+from torperf.core.tormanager import TorManager
+from twisted.internet import defer, interfaces
 from pprint import pprint
 
 class ExperimentFactory(object):
@@ -26,37 +27,51 @@ class ExperimentFactory(object):
 
     def init_simple_experiment(self, name, experiment_dir, config):
         return SimpleHttpExperiment(name, config)
-        
+
 class ExperimentRunner(object):
-    def __init__(self, reactor):
+    def __init__(self, reactor, config):
         self.reactor = reactor
         self.defers = {}
+        self.timer = interfaces.IReactorTime(reactor)
+        self.torManager = TorManager(reactor, config)
         # TODO: take datastore param
-        pass
 
     def run(self, experiment):
         self.defers[experiment.name] = defer.Deferred()
-        d = experiment.run(self.reactor)
-        # TODO: Timeout based on experiment timeout
-        d.addCallback(self.finished, experiment)
-        d.addErrback(self.errored, experiment)
+
+        # Setup new results set
+        experiment.results = []
+        experiment.start_time = "%.02f" % self.timer.seconds()
+
+        p = self.torManager.get_version(experiment.tor_version)
+        p.addCallback(self.got_tor_http_proxy, experiment)
+        p.addErrback(self.errored, experiment, None)
         return self.defers[experiment.name] # Just use experiment.finished
+
+    def got_tor_http_proxy(self, proxy, experiment):
+        d = experiment.run(self.reactor, proxy.http_port)
+        # TODO: Timeout based on experiment timeout
+        d.addCallback(self.finished, experiment, proxy)
+        d.addErrback(self.errored, experiment, proxy)
 
     # This should only really be called if there's an error
     # during setup and no results could be gained at all
-    def errored(self, error, experiment):
+    def errored(self, error, experiment, proxy):
         print "Experiment %s failed with error %s at %s" % (experiment.name, error, time.time())
         # TODO: ensure the error has a nested results set and try postprocess
         experiment.last_run = time.time()
         experiment.results.append({'ERROR': str(error)})
         self.save_results(experiment)
+        if proxy is not None:
+            self.torManager.free(proxy)
         self.defers[experiment.name].callback(None)
 
-    def finished(self, ignore, experiment):
+    def finished(self, ignore, experiment, proxy):
         print "Experiment %s finished at %s" % (experiment.name, time.time())
         experiment.last_run = time.time()
         self.postprocess_results(experiment)
         self.save_results(experiment)
+        self.torManager.free(proxy)
         self.defers[experiment.name].callback(None)
 
     def postprocess_results(self, experiment):
@@ -99,7 +114,7 @@ class ExperimentScheduler(object):
         self._config = config
         self._experiments_dir = config['experiments_dir']
         self._factory = ExperimentFactory()
-        self._runner = ExperimentRunner(self._reactor)
+        self._runner = ExperimentRunner(reactor, config)
         self.setup_experiments()
 
     def setup_experiments(self):
