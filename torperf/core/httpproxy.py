@@ -1,7 +1,7 @@
 from twisted.web import http, proxy
 from twisted.internet import reactor, interfaces
 from twisted.internet.endpoints import TCP4ClientEndpoint
-from txsocksx.http import SOCKS5ClientEndpoint
+from torperf.core.socks import MeasuredSOCKS5ClientEndpoint
 import urlparse
 
 class MeasuredHttpProxyClient(proxy.ProxyClient):
@@ -133,11 +133,11 @@ class MeasuredHttpProxyRequest(proxy.ProxyRequest):
         clientFactory = class_(self.method, rest, self.clientproto, headers,
                                s, self)
 
-        torEndpoint = TCP4ClientEndpoint(self.reactor, '127.0.0.1', self.channel.socks_port)
-        socksEndpoint = SOCKS5ClientEndpoint(host, port, torEndpoint)
-
         self.times = {}
         self.channel.datastore[clientFactory.unique_id] = self.times
+
+        torEndpoint = TCP4ClientEndpoint(self.reactor, '127.0.0.1', self.channel.socks_port)
+        socksEndpoint = MeasuredSOCKS5ClientEndpoint(self.times, host, port, torEndpoint)
 
         socksReq = socksEndpoint.connect(clientFactory)
         def socks_error(reason):
