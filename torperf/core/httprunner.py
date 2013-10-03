@@ -58,7 +58,7 @@ class HTTPRunner(object):
         else:
             d.callback(times)
 
-    def get(self, url):
+    def get(self, url, headers={'User-Agent': ['Mozilla/5.0 (Macintosh; Intel Mac OS X 10.8; rv:24.0) Gecko/20100101 Firefox/24.0']}):
         d = defer.Deferred()
         url = bytes(url) # Fails on unicode
         times = { 'URL': url }
@@ -68,7 +68,7 @@ class HTTPRunner(object):
         d2 = agent.request(
             'GET',
             url,
-            Headers({'User-Agent': ['Mozilla/5.0 (Macintosh; Intel Mac OS X 10.8; rv:24.0) Gecko/20100101 Firefox/24.0']}),
+            Headers(headers),
             None
         )
 
