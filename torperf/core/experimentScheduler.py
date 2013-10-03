@@ -38,6 +38,7 @@ class ExperimentRunner(object):
         self.defers = {}
         self.timer = interfaces.IReactorTime(reactor)
         self.torManager = TorManager(reactor, config)
+        self._server_config = config
         # TODO: take datastore param
 
     def run(self, experiment):
@@ -53,7 +54,7 @@ class ExperimentRunner(object):
         return self.defers[experiment.name] # Just use experiment.finished
 
     def got_tor_http_proxy(self, proxy, experiment):
-        d = experiment.run(self.reactor, proxy.http_port)
+        d = experiment.run(self.reactor, proxy.http_port, self._server_config)
         # TODO: Timeout based on experiment timeout
         d.addCallback(self.finished, experiment, proxy)
         d.addErrback(self.errored, experiment, proxy)

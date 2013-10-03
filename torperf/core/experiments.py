@@ -44,7 +44,7 @@ class Experiment(object):
     def next_runtime(self):
         return self.last_run + self.interval
 
-    def run(self, reactor):
+    def run(self, reactor, http_port, server_config):
         raise NotImplementedError()
 
 class SimpleHttpExperiment(Experiment):
@@ -73,7 +73,7 @@ class SimpleHttpExperiment(Experiment):
     def check_valid_url(self, url):
         return urlparse(url).hostname != None
 
-    def run(self, reactor, http_port):
+    def run(self, reactor, http_port, server_config):
         self.finished = Deferred()
 
         runner = HTTPRunner(reactor, '127.0.0.1', http_port)
@@ -105,3 +105,15 @@ class SimpleHttpExperiment(Experiment):
 
     def return_results(self):
         self.finished.callback(self.results)
+
+class StaticFileExperiment(Experiment):
+    def __init__(self, *args):
+        Experiment.__init__(self, *args)
+        # TODO: Parse args
+
+    def run(self, reactor, http_port, server_config):
+        # Generate new files inside /experiments_dir/self/
+
+        # For each file, http request to server_hostname:80
+        # Send header X-Torperf-Expected-Bytes
+        pass
