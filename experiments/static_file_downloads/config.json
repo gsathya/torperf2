@@ -1,0 +1,8 @@
+{
+	"interval": 60,
+	"files": {
+		"small.txt": 1000,
+		"medium.txt": 4000,
+		"large.txt": 10000
+	}
+}
