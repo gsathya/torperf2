@@ -2,5 +2,6 @@
 	"interval": 60,
 	"requests": [
 		"http://www.google.com/search?q=hello"
-	]
+	],
+	"skip": true
 }
