@@ -187,6 +187,32 @@ class TestExperimentFactory(unittest.TestCase):
                 sched = ExperimentScheduler(reactor, config)
                 self.assertEqual(1, len(sched.experiments))
 
+    def test_experiment_with_SKIP_config(self):
+        with clean_tmp_dir() as tmp_dir:
+            path = tmp_dir + '/experiment1/'
+            os.makedirs(path)
+
+            config = {
+                'experiments_dir': tmp_dir + "/",
+            }
+
+            with open(path + "/config.json", "w") as f:
+                f.write("""
+                    {
+                        "skip": true,
+                        "interval": 60,
+                        "requests": [
+                            "http://www.torproject.org/"
+                        ]
+                    }
+                    """
+                )
+
+            # TODO: Check error message was written to console
+            with muted_std_out() as out:
+                sched = ExperimentScheduler(reactor, config)
+                self.assertEqual(0, len(sched.experiments))
+
     def test_many_experiments_some_bad(self):
         with clean_tmp_dir() as tmp_dir:
             config = {
