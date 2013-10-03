@@ -20,6 +20,10 @@ class ExperimentFactory(object):
         with open(config_path) as config_file:
             config = json.load(config_file)
 
+        if 'skip' in config.keys():
+            if config['skip'] == True:
+                raise Exception("Skipping.")
+
         if 'requests' in config.keys():
             return self.init_simple_experiment(name, experiment_dir, config)
 
@@ -85,7 +89,6 @@ class ExperimentRunner(object):
                         # Only overwrite it if the experiment hasn't chosen their own value
                         if key not in r:
                             r[key] = proxy_timings[key]
-
 
     def save_results(self, experiment):
         def make_sure_dirs_exist(path):
