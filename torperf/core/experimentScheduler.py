@@ -3,7 +3,7 @@ import errno
 import json
 import time
 
-from torperf.core.experiments import SimpleHttpExperiment
+from torperf.core.experiments import SimpleHttpExperiment, StaticFileExperiment
 from torperf.core.tormanager import TorManager
 from twisted.internet import defer, interfaces
 from pprint import pprint
@@ -26,6 +26,9 @@ class ExperimentFactory(object):
 
         if 'requests' in config.keys():
             return self.init_simple_experiment(name, experiment_dir, config)
+
+        if 'files' in config.keys():
+            return StaticFileExperiment(name, config)
 
         raise ValueError("Config is not setup in an expected manner.")
 

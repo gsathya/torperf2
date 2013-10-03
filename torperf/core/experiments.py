@@ -7,6 +7,7 @@ from twisted.internet.defer import Deferred
 from torperf.core.httprunner import HTTPRunner
 from pprint import pprint
 from urlparse import urlparse
+from twisted.internet import interfaces
 
 class Experiment(object):
     def __init__(self, name, config):
@@ -109,11 +110,72 @@ class SimpleHttpExperiment(Experiment):
 class StaticFileExperiment(Experiment):
     def __init__(self, *args):
         Experiment.__init__(self, *args)
-        # TODO: Parse args
+        self.set_files()
+
+    def set_files(self):
+        files = self._config['files']
+
+        if isinstance(files, dict):
+            if len(files) < 1:
+                raise ValueError("No files specified.")
+            else:
+                for fn in files.keys():
+                    sz = files[fn]
+                    # Ensure we have a valid size for each filename
+                    # TODO: Validate valid filenames
+                    try:
+                        x = sz
+                        if not isinstance(sz, int):
+                            x = int(sz, 10)
+                        if x <= 0:
+                            raise ValueError("'%d' is too small." % sz)
+                        files[fn] = sz
+                    except Exception as ex:
+                        raise ValueError("'%s' is not a valid number" % sz)
+                self.files = files
+        else:
+            raise ValueError("Files not specified in proper format.\nExpected: { 'filename': 'expected_size' }")
 
     def run(self, reactor, http_port, server_config):
-        # Generate new files inside /experiments_dir/self/
+        self.finished = Deferred()
 
-        # For each file, http request to server_hostname:80
-        # Send header X-Torperf-Expected-Bytes
-        pass
+        base_url = server_config['http_host'] + '/static/' + self.name + '/'
+        public_folder = server_config['experiments_dir'] + self.name + '/public/'
+
+        # Generate new files inside /experiments_dir/self/
+        for fn in self.files.keys():
+            sz = self.files[fn]
+            full_path = public_folder + fn
+            with open(full_path, 'w') as data_file:
+                print "Writing %d bytes to %s" % (sz, full_path)
+                data_file.write(os.urandom(sz))
+
+        # Reset the start time
+        timer = interfaces.IReactorTime(reactor)
+        self.start_time = "%0.2f" % timer.seconds()
+        runner = HTTPRunner(reactor, '127.0.0.1', http_port)
+
+        for fn in self.files.keys():
+            # TODO: Reset identity
+            url = bytes(base_url + fn)
+            sz = self.files[fn]
+
+            # Send header X-Torperf-Expected-Bytes
+            headers = { 'X-Torperf-Expected-Bytes': [sz] }
+            # Fetch url
+            d = runner.get(url, headers)
+            d.addCallback(self.save_results, url)
+
+        return self.finished
+
+    def save_results(self, results, url):
+        results['START'] = self.start_time
+
+        # Remove the data results since it's random garbage
+        # TODO: Verify received data is same as local file
+        del results['DATA']
+
+        # The results could be an error
+        self.results.append(results)
+        if len(self.results) == len(self.files):
+            self.finished.callback(self.results)
