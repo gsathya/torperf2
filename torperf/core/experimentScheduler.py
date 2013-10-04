@@ -3,6 +3,7 @@ import errno
 import json
 import time
 
+from torperf.core.fileserver import TorPerfFileServer
 from torperf.core.experiments import SimpleHttpExperiment, StaticFileExperiment
 from torperf.core.tormanager import TorManager
 from twisted.internet import defer, interfaces
@@ -41,8 +42,9 @@ class ExperimentRunner(object):
         self.defers = {}
         self.timer = interfaces.IReactorTime(reactor)
         self.torManager = TorManager(reactor, config)
+        self.fileServer = TorPerfFileServer(reactor, config)
+        self.fileServer.startServer()
         self._server_config = config
-        # TODO: take datastore param
 
     def run(self, experiment):
         self.defers[experiment.name] = defer.Deferred()

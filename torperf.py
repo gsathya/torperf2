@@ -5,7 +5,6 @@
 
 import perfconf
 
-from torperf.core.fileserver import TorPerfFileServer
 from torperf.core.experimentScheduler import ExperimentScheduler
 
 from twisted.internet import reactor, task
@@ -13,9 +12,6 @@ from twisted.python import log
 import sys
 
 log.startLogging(sys.stdout)
-
-file_server = TorPerfFileServer(reactor, perfconf.tor_config)
-file_server.startServer()
 
 experimenTor = ExperimentScheduler(reactor, perfconf.tor_config)
 experimenTor.start_experiments()
