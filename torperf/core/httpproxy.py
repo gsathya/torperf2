@@ -1,8 +1,27 @@
 from twisted.web import http, proxy
-from twisted.internet import reactor, interfaces
+from twisted.internet import reactor, interfaces, tcp
 from twisted.internet.endpoints import TCP4ClientEndpoint
 from torperf.core.socks import MeasuredSOCKS5ClientEndpoint
 import urlparse
+
+class WriteCountingTransport(tcp.Client):
+    def __init__(self, wrapped):
+        self.wrapped = wrapped
+        self.sentBytes = 0
+
+    def write(self, bytes):
+        self.wrapped.write(bytes)
+        self.sentBytes += len(bytes)
+
+    def writeSequence(self, iovec):
+        total = 0
+        for s in iovec:
+            total += len(s)
+        self.wrapped.writeSequence(iovec)
+        self.sentBytes += total
+
+    def __getattr__(self, attr):
+        return getattr(self.wrapped, attr)
 
 class MeasuredHttpProxyClient(proxy.ProxyClient):
     def __init__(self, command, rest, version, headers, data, father):
@@ -12,12 +31,11 @@ class MeasuredHttpProxyClient(proxy.ProxyClient):
         self.timed_out = 0
         self.decileLogged = 0
         self.receivedBytes = 0
-        self.sentBytes = 0
         # Modify outgoing headers here via self.father
         self.setExpectedBytes()
 
     def setExpectedBytes(self):
-        req_headers = dict(self.father.getAllHeaders())
+        req_headers = dict(self.headers)
         # For some reason the header is lowercase
         if 'x-torperf-expected-bytes' in req_headers:
             self.expectedBytes = int(req_headers['x-torperf-expected-bytes'], 10)
@@ -28,6 +46,9 @@ class MeasuredHttpProxyClient(proxy.ProxyClient):
         self.handleHeader('X-TorPerfProxyId', id)
 
     def connectionMade(self):
+        # Wrap the transport to record bytes sent
+        self.transport = WriteCountingTransport(self.transport)
+
         self.father.times['DATAREQUEST'] = "%.02f" % self.timer.seconds()
         proxy.ProxyClient.connectionMade(self)
 
@@ -65,7 +86,7 @@ class MeasuredHttpProxyClient(proxy.ProxyClient):
 
     def handleResponseEnd(self):
         if not self._finished:
-            self.father.times['WRITEBYTES'] = self.sentBytes
+            self.father.times['WRITEBYTES'] = self.transport.sentBytes
             self.father.times['READBYTES'] = self.receivedBytes
             self.father.times['DATACOMPLETE'] = "%.02f" % self.timer.seconds()
             self.father.times['DIDTIMEOUT'] = self.timed_out
