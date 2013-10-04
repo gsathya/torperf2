@@ -18,17 +18,14 @@ class TorManager:
         if tor_version == None:
             tor_version = "latest"
 
-        print "Looking for %s" % tor_version
         d = defer.Deferred()
 
         if tor_version in self.instances:
-            print "Found instance for %s" % tor_version
             i = self.instances[tor_version]
             if i.available:
                 i.available = False
-                return defer.succeed(i)
+                return i.refresh_identity()
             else:
-                print "Queuing instance %s" % tor_version
                 if tor_version in self.queued:
                     self.queued[tor_version].append(d)
                 else:
@@ -96,6 +93,19 @@ class TorHttpProxy:
         else:
             print "No timings found for %s" % identifier
             return None
+
+    def refresh_identity(self):
+        def handle_response(response, d):
+            if response != "OK":
+                d.errback(response)
+            else:
+                print "Got a new identity!"
+                d.callback(self)
+
+        d = defer.Deferred()
+        sig = self.tor_instance.signal("NEWNYM")
+        sig.addBoth(handle_response, d)
+        return d
 
     def tor_progress(self, progress, tag, summary):
         # TODO: Log whatever is valuable
