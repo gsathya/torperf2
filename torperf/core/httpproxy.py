@@ -72,8 +72,11 @@ class MeasuredHttpProxyClient(proxy.ProxyClient):
             while (self.decileLogged < 9 and
                   (self.receivedBytes * 10) / self.expectedBytes >
                    self.decileLogged):
+                if self.decileLogged == 0:
+                    self.father.times['DATAPERC'] = {}
+
                 self.decileLogged += 1
-                self.father.times['DATAPERC%d' % (self.decileLogged * 10, )] = \
+                self.father.times['DATAPERC']['%d' % (self.decileLogged * 10, )] = \
                            "%.02f" % self.timer.seconds()
 
         # make all content upper case
