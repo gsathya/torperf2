@@ -88,13 +88,20 @@ class ExperimentRunner(object):
         for r in experiment.results:
             if 'headers' in r.keys():
                 if 'X-Torperfproxyid' in r['headers']:
-                    # get the server data from the proxy
                     id = r['headers']['X-Torperfproxyid'][0]
-                    proxy_timings = proxy.get_timings(id)
-                    for key in proxy_timings.keys():
-                        # Only overwrite it if the experiment hasn't chosen their own value
-                        if key not in r:
-                            r[key] = proxy_timings[key]
+                    # get the server data from the proxy
+                    self.add_results(r, proxy.get_timings(id))
+
+                    # get the server data from the fileserver
+                    self.add_results(r, self.fileServer.get_timings(id))
+
+    def add_results(self, results, new_timings):
+        if new_timings == None:
+            return
+        for key in new_timings.keys():
+        # Only overwrite it if the experiment hasn't chosen their own value
+            if key not in results:
+                results[key] = new_timings[key]
 
     def save_results(self, experiment):
         def make_sure_dirs_exist(path):
