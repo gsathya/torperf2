@@ -14,6 +14,15 @@ class MeasuredHttpProxyClient(proxy.ProxyClient):
         self.receivedBytes = 0
         self.sentBytes = 0
         # Modify outgoing headers here via self.father
+        self.setExpectedBytes()
+
+    def setExpectedBytes(self):
+        req_headers = dict(self.father.getAllHeaders())
+        # For some reason the header is lowercase
+        if 'x-torperf-expected-bytes' in req_headers:
+            self.expectedBytes = int(req_headers['x-torperf-expected-bytes'], 10)
+        else:
+            self.expectedBytes = 0
 
     def setUniqueID(self, id):
         self.handleHeader('X-TorPerfProxyId', id)
@@ -36,6 +45,14 @@ class MeasuredHttpProxyClient(proxy.ProxyClient):
         if self.receivedBytes == 0 and len(buffer) > 0:
             self.father.times['DATARESPONSE'] = "%.02f" % self.timer.seconds()
         self.receivedBytes += len(buffer)
+
+        if self.expectedBytes > 0:
+            while (self.decileLogged < 9 and
+                  (self.receivedBytes * 10) / self.expectedBytes >
+                   self.decileLogged):
+                self.decileLogged += 1
+                self.father.times['DATAPERC%d' % (self.decileLogged * 10, )] = \
+                           "%.02f" % self.timer.seconds()
 
         # make all content upper case
         proxy.ProxyClient.handleResponsePart(self, buffer.upper())
