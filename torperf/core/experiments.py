@@ -173,7 +173,8 @@ class StaticFileExperiment(Experiment):
 
         # Remove the data results since it's random garbage
         # TODO: Verify received data is same as local file
-        del results['DATA']
+        if 'DATA' in results:
+            del results['DATA']
 
         # The results could be an error
         self.results.append(results)
