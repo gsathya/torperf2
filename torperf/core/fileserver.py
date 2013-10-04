@@ -81,7 +81,7 @@ class TorPerfFileServer(object):
         print "Http Server started."
 
     def get_timings(self, identifier):
-        if identifier in self._datastore:
+        if identifier in self.datastore:
             result = self.datastore[identifier]
             # Remove from results set
             del self.datastore[identifier]
