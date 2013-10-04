@@ -45,6 +45,8 @@ class ExperimentRunner(object):
         self.fileServer = TorPerfFileServer(reactor, config)
         self.fileServer.startServer()
         self._server_config = config
+        if not 'source' in config:
+            raise KeyError("Must supply 'source' name to identify server.")
 
     def run(self, experiment):
         self.defers[experiment.name] = defer.Deferred()
@@ -112,14 +114,24 @@ class ExperimentRunner(object):
                     raise
 
         results = experiment.results
-        pprint(results)
         try:
             dirname = "results/" + experiment.name + "/"
             make_sure_dirs_exist(dirname)
 
             for r in results:
+                # TODO: Fix the spec to not need this hackyness
+                # e.g. no socks port available if the tor startup failed
+                # no request start time available if requests failed
+                # hence relying on start_time instead for ease
                 if not 'START' in r.keys():
                     r['START'] = experiment.start_time
+                if not 'SOURCE' in r.keys():
+                    r['SOURCE'] = self._server_config['source']
+                if not 'SOCKS' in r.keys():
+                    r['SOCKS'] = '0'
+                if not 'GUID' in r.keys():
+                    r['GUID'] = r['SOURCE'] + "_" + str(r['SOCKS']) + "_" + r["START"]
+                pprint(r)
                 filename = dirname + str(r['START']) + '.json'
                 with open(filename, "w") as results_file:
                     results_file.write(json.dumps(r) + "\n")
