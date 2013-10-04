@@ -9,3 +9,4 @@ pip*
 _trial_temp/
 src/
 results/
+experiments/static_file_downloads/public/
