@@ -164,12 +164,14 @@ class StaticFileExperiment(Experiment):
             headers = { 'X-Torperf-Expected-Bytes': [sz] }
             # Fetch url
             d = runner.get(url, headers)
-            d.addCallback(self.save_results, url)
+            d.addCallback(self.save_results, fn)
 
         return self.finished
 
-    def save_results(self, results, url):
+    def save_results(self, results, fn):
         results['START'] = self.start_time
+        results['TYPE'] = "file_download"
+        results['FILESIZE'] = self.files[fn]
 
         # Remove the data results since it's random garbage
         # TODO: Verify received data is same as local file
