@@ -89,6 +89,13 @@ class TorHttpProxy:
             result = self.timings[identifier]
             # Remove from results set
             del self.timings[identifier]
+
+            # Add tor_version and socks port
+            if hasattr(self.tor_instance, 'version'):
+                result['TORVERSION'] = self.tor_instance.version
+
+            result['SOCKS'] = self.socks_port
+
             return result
         else:
             print "No timings found for %s" % identifier
@@ -103,6 +110,8 @@ class TorHttpProxy:
                 d.callback(self)
 
         d = defer.Deferred()
+        # Should probably clear cached DNS also
+        # CLEARDNSCACHE -- Forget the client-side cached IPs for all hostnames.
         sig = self.tor_instance.signal("NEWNYM")
         sig.addBoth(handle_response, d)
         return d
