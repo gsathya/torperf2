@@ -24,14 +24,16 @@ class WriteCountingTransport(tcp.Client):
         return getattr(self.wrapped, attr)
 
 class MeasuredHttpProxyClient(proxy.ProxyClient):
-    def __init__(self, command, rest, version, headers, data, father):
-        proxy.ProxyClient.__init__(self, command, rest, version, headers, data, father)
-        self.data = data
+    def __init__(self, unique_id, *args):
+        proxy.ProxyClient.__init__(self, *args)
         self.timer = interfaces.IReactorTime(reactor)
         self.timed_out = 0
         self.decileLogged = 0
         self.receivedBytes = 0
         # Modify outgoing headers here via self.father
+        self.unique_id = unique_id
+        # Send the request id to the server
+        self.headers['X-TorPerfProxyId'] = self.unique_id
         self.setExpectedBytes()
 
     def setExpectedBytes(self):
@@ -42,15 +44,14 @@ class MeasuredHttpProxyClient(proxy.ProxyClient):
         else:
             self.expectedBytes = 0
 
-    def setUniqueID(self, id):
-        self.handleHeader('X-TorPerfProxyId', id)
-
     def connectionMade(self):
         # Wrap the transport to record bytes sent
         self.transport = WriteCountingTransport(self.transport)
 
         self.father.times['DATAREQUEST'] = "%.02f" % self.timer.seconds()
         proxy.ProxyClient.connectionMade(self)
+        # Add unique_id to response
+        self.handleHeader('X-TorPerfProxyId', self.unique_id)
 
     """Mange returned header, content here.
 
@@ -117,9 +118,8 @@ class MeasuredHttpProxyClientFactory(proxy.ProxyClientFactory):
 
     def buildProtocol(self, addr):
         #TODO: Add a timeout
-        p = self.protocol(self.command, self.rest, self.version,
+        p = self.protocol(self.unique_id, self.command, self.rest, self.version,
                         self.headers, self.data, self.father)
-        p.setUniqueID(self.unique_id)
         return p
 
     def clientConnectionFailed(self, connector, reason):
